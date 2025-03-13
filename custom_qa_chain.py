@@ -1,4 +1,3 @@
-
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import BaseRetriever
@@ -35,8 +34,9 @@ class CustomQA():
         )
 
         
-        self.qa_chain = create_stuff_documents_chain(llm=llm_model, prompt = hub.pull("rlm/rag-prompt"))         
-        
+        self.qa_chain = create_stuff_documents_chain(llm=llm_model, prompt = prompt_template)         
+        self.retriever = retriever
+        self.llm_model = llm_model
 
     def run(self, inputs):
         
@@ -47,10 +47,11 @@ class CustomQA():
             print("No matching documents found. Skipping LLM call.")
             return {"result": "I couldn't find any information about that.", "source_documents": []} 
         else:
-            response = self.qa_chain.invoke({
+            asnwer = self.qa_chain.invoke({
                 "inputs": question,
                 "context": retrieved_docs
             })
+            response = {}
+            response["result"] = asnwer
             response["source_documents"] = retrieved_docs
             return response
-
