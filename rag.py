@@ -1,4 +1,3 @@
-import json
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import TextLoader, UnstructuredMarkdownLoader
 from langchain_text_splitters import MarkdownHeaderTextSplitter
@@ -9,7 +8,7 @@ from langchain.chat_models import ChatOpenAI
 
 import os
 
-os.environ["OPENAI_API_KEY"] = "<< -- Insert OPEN AI key here -- >>"
+os.environ["OPENAI_API_KEY"] = "<< -- OPEN AI KEY -- >>"
 
 
 class RAG:
@@ -24,12 +23,12 @@ class RAG:
     self.document = UnstructuredMarkdownLoader(doc_file).load()
     self.chunks = self.split_document(self.document)
     self.vector_store = self.create_vector_store(self.chunks)
-    self.queries = self.load_json_file(query_file)
+    self.queries = load_json_file(query_file)
     self.results = []
     self.retriever = self.vector_store.as_retriever(search_type="similarity_score_threshold",
                                                     search_kwargs={"score_threshold": 0.2})
     self.llm = ChatOpenAI(model="gpt-4o")
-    self.qa = CustomRetrievalQA(llm_model=self.llm,
+    self.qa = CustomQA(llm_model=self.llm,
                                 retriever=self.retriever)
 
   def check_file_exists(self, file_path):
@@ -66,7 +65,7 @@ class RAG:
       db = FAISS.from_documents(chunks, embeddings)
       return db
 
-  def query(self, query):
+  def get_answer(self, query):
       """
       takes in a query and returns the answer.
       input:
@@ -74,7 +73,7 @@ class RAG:
       output:
         result: JSON = anser and source documents.
       """
-      result = self.qa({"query": query})
+      result = self.qa.run({"query": query})
       source_docs = result["source_documents"]
       
       return result
@@ -100,18 +99,7 @@ class RAG:
     with open("results.json", "w") as f:
         json.dump(self.results, f, indent=4)
   
-  def query_json(self, query):
-    """
-    takes in a query and returns the answer.
-    input:
-      query: string = query to be answered.
-    output:
-      result: JSON = anser and source documents.
-    """
-    result = self.qa({"query": query})
-    query["source_documents"] = [{"id": doc.id, "content": doc.page_content} for doc in source_documents]    
-    return result
-
+  
   def run(self):
     """
     runs the RAG pipeline on the list of queries.
@@ -120,7 +108,7 @@ class RAG:
 
     results = []
     for query in self.queries:
-        result = self.query(query['text'])
+        result = self.get_answer(query['text'])
         answer, source_documents = result["result"], result["source_documents"]
         query["answer"] = answer
         query["source_documents"] = [{"id": doc.id, "content": doc.page_content} for doc in source_documents]
@@ -130,5 +118,3 @@ class RAG:
     self.results = results
     self.store_json_file()
     return self.results
-
-
